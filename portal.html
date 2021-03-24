@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>O</title>
+</head>
+<body style="background-color: #000000">
+    <div class="centered" id="circle-spinner"></div>
+</body>
+</html>
+
+<style>
+.centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.rotate-wrapper {
+    position: absolute;
+}
+
+@keyframes momentum-a {
+    0%   {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes momentum-b {
+    0%   {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(-360deg);
+    }
+}
+
+.spinner {
+    box-sizing: border-box;
+    flex-grow: 0;
+    flex-shrink: 0;
+    position: absolute;
+    transform-origin: center center;
+    border-radius: 50%;
+}
+
+.spinner:hover {
+    border-style: solid;
+}
+</style>
+
+<script src="jquery-3.5.1.min.js"></script>
+<script>
+
+let circle_num = 120;
+// let circle_num = 6;
+let period = 30;
+let width = 3;
+let size = (width + 1) * circle_num * 2;
+
+$(document).ready(function() {
+    //let centered = $(".centered");
+    // centered.css("margin-top", (size / -2).toString() + "px");
+    // centered.css("margin-left", (size / -2).toString() + "px");
+    create_circle();
+});
+
+let create_circle = function() {
+    let circle_spinner = $("#circle-spinner");
+    circle_spinner.empty();
+    let i = 0;
+    while(i < circle_num) {
+        let indent = i / circle_num;
+        let radius = size * (1 - indent);
+        // let offset = (size * indent) / 2 - width;
+        let offset = radius / -2;
+        let duration = period * (1 - indent);
+        let color = (30 + 330 * indent) % 360;
+        let color_string = "hsl(" + color.toString() + ", 100%, 50%, " + (0.05 + indent * 0.9).toString() + ")";
+        // let rotate = i * 30 + Math.random() * 30 - 15;
+        let rotate = Math.random() * 360;
+        // while(rotate > 360) {
+        //     rotate -= 360;
+        // }
+        let rotate_wrapper = $("<span />", {
+            class: "rotate-wrapper",
+            css: {
+                "transform": "rotate(" + rotate.toString() + "deg)",
+                "width": radius.toString() + "px",
+                "height": radius.toString() + "px",
+                "top": offset.toString() + "px",
+                "left": offset.toString() + "px",
+            },
+        });
+        let frame = $("<span />", {
+            class: "spinner",
+            css: {
+                "width": radius.toString() + "px",
+                "height": radius.toString() + "px",
+                // "top": offset.toString() + "px",
+                // "left": offset.toString() + "px",
+                "border": width.toString() + "px double rgb(0, 0, 0, 0)",
+            },
+            click: function() {
+                period *= 7 / 8;
+                reset_duration();
+            }
+        });
+        frame.css("border-top-color", color_string);
+        if([0, circle_num - 1].includes(i)) {
+            frame.css("border-style", "double");
+            frame.css("border-bottom-color", color_string);
+        }
+        else {
+            switch(Math.floor(Math.random() * 4) % 4) {
+                case 0:
+                    frame.css("border-bottom-color", color_string);
+                    break;
+                default:
+                    break;
+            }
+            switch(Math.floor(Math.random() * 16) % 16) {
+                case 0:
+                    frame.css("border-style", "solid");
+                    break;
+                default:
+                    break;
+            }
+        }
+        switch(Math.floor(Math.random() * 2) % 2) {
+            case 0:
+                frame.css("animation", "momentum-a " + duration.toString() + "s linear infinite");
+                break;
+            case 1:
+                frame.css("animation", "momentum-b " + duration.toString() + "s linear infinite");
+                break;
+        }
+        rotate_wrapper.append(frame);
+        circle_spinner.append(rotate_wrapper);
+        i += 1;
+    }
+};
+
+let reset_duration = function() {
+    console.log(period)
+    let frame_list = $("#circle-spinner").children().slice();
+    let i = 0;
+    while(i < circle_num) {
+        let indent = i / circle_num;
+        let duration = period * (1 - indent);
+        $(frame_list[i]).children().css("animation-duration", duration.toString() + "s");
+        i += 1;
+    }
+}
+</script>

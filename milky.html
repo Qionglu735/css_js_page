@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>O</title>
+</head>
+<body style="background-color: #000000">
+    <div class="centered" id="milky"></div>
+</body>
+</html>
+
+<style>
+.centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#milky{
+    width: 300px;
+    height: 300px;
+}
+
+.rotate-wrapper{
+    position: absolute;
+    /*left: 50%;*/
+    /*top: 50%;*/
+    width: 100%;
+    height: 100%;
+}
+
+.translate-wrapper{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.star-class {
+    position: absolute;
+    border-radius: 50%;
+    width: 1px;
+    height: 1px;
+}
+
+@keyframes moving {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(0, -100%);
+    }
+}
+
+@keyframes growing {
+    0% {
+        opacity: 0;
+    }
+    3% {
+        opacity: 0;
+    }
+    45% {
+        opacity: 1;
+    }
+    95% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+</style>
+
+<script src="jquery-3.5.1.min.js"></script>
+<script>
+
+let size = 700;
+let star_num = 12 * 32;
+// let star_num = 0;
+let base_period = 20;
+let offset_range = 15;
+
+$(document).ready(function() {
+    let centered = $(".centered");
+    centered.css("width", size + "px");
+    centered.css("height",  size + "px");
+    // centered.css("margin-top", (size / -2).toString() + "px");
+    // centered.css("margin-left", (size / -2).toString() + "px");
+    create_milky();
+});
+
+let create_milky = function() {
+    let milky = $("#milky");
+    milky.empty()
+    console.log(base_period + offset_range)
+    console.log(base_period)
+    console.log(base_period - 0.6 * offset_range)
+    console.log(base_period - 0.9 * offset_range)
+    console.log(base_period - offset_range);
+    let i = 0;
+    while(i < star_num) {
+        let rotate = i * 30 + Math.random() * 30 - 15;
+        while(rotate > 360) {
+            rotate -= 360;
+        }
+        let period = base_period + Math.random() * (offset_range * 2) - offset_range;
+        let delay = Math.random() * (base_period * 2) - base_period;
+        let star_size = 1;
+        let color = "#ffffff";
+        switch(Math.floor(Math.random() * 32)) {
+            case 1:
+                color = "#ffff33";
+                break;
+            case 2:
+                color = "#ff7777";
+                break;
+            case 3:
+                color = "#7777ff";
+                break;
+        }
+        // if(period < base_period + 0.6 *  offset_range) {
+        //     star_size = 2;
+        // }
+        if(period < base_period) {
+            star_size = 2;
+        }
+        if(period < base_period - 0.6 * offset_range) {
+            star_size = 3;
+        }
+        if(period < base_period - 0.9 * offset_range) {
+            star_size = 4;
+        }
+        // console.log(rotate, period, delay);
+        let rotate_wrapper = $("<span />", {
+            class: "rotate-wrapper",
+            css: {
+                "transform": "rotate(" + rotate.toString() + "deg)",
+            },
+            click: function() {},
+        });
+        let translate_wrapper = $("<span />", {
+            class: "translate-wrapper",
+            css: {
+                "animation": "moving " + period + "s ease-in infinite",
+                "animation-delay": delay + "s",
+                // "border": "1px solid #ffffff",
+            },
+            click: function() {},
+        });
+        let star = $("<span />", {
+            class: "star-class",
+            css: {
+                "width": star_size + "px",
+                "height": star_size + "px",
+                "background-color": color,
+                "opacity": 0,
+                "top": "calc(50% - " + star_size / 2 + "px)",
+                "left": "calc(50% - " + star_size / 2 + "px)",
+                "animation": "growing " + period + "s ease-in infinite",
+                "animation-delay": delay + "s",
+            },
+            click: function() {},
+        });
+        translate_wrapper.append(star);
+        rotate_wrapper.append(translate_wrapper);
+        milky.append(rotate_wrapper);
+        i += 1;
+    }
+};
+
+</script>
