@@ -1,0 +1,744 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>O</title>
+</head>
+<body style="background-color: #000000">
+    <div class="centered" id="maze"></div>
+</body>
+</html>
+
+<style>
+.centered {
+    position: fixed;
+    top: 50%;
+    left: 15%;
+    transform: translate(-50%, -50%);
+}
+</style>
+
+<script src="jquery-3.5.1.min.js"></script>
+<script>
+    let MAZE_SIZE = 5;
+    let PIXEL_SIZE = 15;
+    let WEIGHT_RANGE_LEFT = 1;
+    let WEIGHT_RANGE_RIGHT = 100;
+    let ACCESS_RATE = 0.5;
+    let TURN_DURATION = 3000;
+
+    let maze_v = [];
+    let maze_e = [];
+    let maze_e_prim = [];
+    let maze_solution = [];
+
+    let maze = $("#maze");
+    let map_size = MAZE_SIZE * 2 + 1;
+    maze.css("width", map_size * PIXEL_SIZE + "px");
+    maze.css("height",  map_size * PIXEL_SIZE + "px");
+    let progress = $("<span />", {
+        css: {
+            "position": "absolute",
+            "top": "50%",
+            "left": "50%",
+            "transform": "translate(-50%, -50%)",
+            "font-size": "14px",
+            "color": "#555555",
+        },
+        text: "0%",
+        click: function() {},
+    });
+    maze.append(progress);
+
+    let map = [];
+
+    $(document).ready(function() {
+
+        init_maze();
+
+        let worker_prim_blob = new Blob([document.querySelector("#worker_prim").textContent]);
+        let worker_prim_url = window.URL.createObjectURL(worker_prim_blob);
+        let worker_prim = new Worker(worker_prim_url);
+        worker_prim.postMessage({
+            maze_size: MAZE_SIZE,
+            maze_v: maze_v,
+            maze_e: maze_e,
+        });
+        worker_prim.onmessage = function(event) {
+            if(event.data.type === "progress") {
+                progress.text(Math.floor(event.data.progress * 10000 / MAZE_SIZE / MAZE_SIZE) / 100 + "%")
+            }
+            else if(event.data.type === "result") {
+                maze_e_prim = event.data.maze_e_prim;
+
+                for(let i=0; i<MAZE_SIZE*MAZE_SIZE; i++) {
+                    for(let j=0; j<MAZE_SIZE*MAZE_SIZE; j++) {
+                        if(maze_e[i][j] != null && maze_e_prim[i][j] == null) {
+                            if(maze_e[i][j].w < Math.floor((WEIGHT_RANGE_LEFT + WEIGHT_RANGE_RIGHT) * ACCESS_RATE)) {
+                                maze_e_prim[i][j] = maze_e[i][j];
+                            }
+                        }
+                    }
+                }
+
+                init_map();
+                render_map();
+
+                let worker_dijkstra = new Worker(
+                    window.URL.createObjectURL(
+                        new Blob([document.querySelector("#worker_dijkstra").textContent])));
+                worker_dijkstra.postMessage({
+                    maze_size: MAZE_SIZE,
+                    maze_v: maze_v,
+                    maze_e_prim: maze_e_prim,
+                });
+                worker_dijkstra.onmessage = function(event) {
+                    if(event.data.type === "progress") {
+
+                    }
+                    else if(event.data.type === "result") {
+                        console.log("dijkstra:",
+                            event.data.solution.path,
+                            event.data.solution.path.length,
+                            event.data.solution.cost)
+                        maze_solution = event.data.solution.path;
+                    }
+                };
+
+                let worker_dfs = new Worker(
+                    window.URL.createObjectURL(
+                        new Blob([document.querySelector("#worker_dfs").textContent])));
+                worker_dfs.postMessage({
+                    maze_size: MAZE_SIZE,
+                    maze_v: maze_v,
+                    maze_e_prim: maze_e_prim,
+                });
+                worker_dfs.onmessage = function(event) {
+                    if(event.data.type === "progress") {
+
+                    }
+                    else if(event.data.type === "result") {
+                        console.log("dfs:",
+                            event.data.solution.path,
+                            event.data.solution.path.length,
+                            event.data.solution.cost);
+                    }
+                };
+
+                let worker_bfs = new Worker(
+                    window.URL.createObjectURL(
+                        new Blob([document.querySelector("#worker_bfs").textContent])));
+                worker_bfs.postMessage({
+                    maze_size: MAZE_SIZE,
+                    maze_v: maze_v,
+                    maze_e_prim: maze_e_prim,
+                });
+                worker_bfs.onmessage = function(event) {
+                    if(event.data.type === "progress") {
+
+                    }
+                    else if(event.data.type === "result") {
+                        console.log("bfs:",
+                            event.data.solution.path,
+                            event.data.solution.path.length,
+                            event.data.solution.cost);
+                    }
+                };
+            }
+        };
+    });
+
+    let init_maze = function(){
+        for(let i=0; i<MAZE_SIZE*MAZE_SIZE; i++) {
+            maze_e[i] = [];
+            maze_e_prim[i] = [];
+            for(let j=0; j<MAZE_SIZE*MAZE_SIZE; j++) {
+                maze_e[i][j] = null;
+                maze_e_prim[i][j] = null;
+            }
+        }
+        for(let i=0; i<MAZE_SIZE; i++) {
+            for(let j=0; j<MAZE_SIZE; j++) {
+                maze_v[i * MAZE_SIZE + j] = {
+                    "x": i,
+                    "y": j,
+                };
+                if(j < MAZE_SIZE - 1) {
+                    maze_e[i * MAZE_SIZE + j][i * MAZE_SIZE + (j + 1)] = {
+                        "x1": i,
+                        "y1": j,
+                        "x2": i,
+                        "y2": j + 1,
+                        "w": Math.floor(WEIGHT_RANGE_LEFT + Math.random() * WEIGHT_RANGE_RIGHT),
+                    };
+                    maze_e[i * MAZE_SIZE + (j + 1)][i * MAZE_SIZE + j] = {
+                        "x1": i,
+                        "y1": j + 1,
+                        "x2": i,
+                        "y2": j,
+                        "w": Math.floor(WEIGHT_RANGE_LEFT + Math.random() * WEIGHT_RANGE_RIGHT),
+                    };
+                }
+                if(i < MAZE_SIZE - 1) {
+                    maze_e[i * MAZE_SIZE + j][(i + 1) * MAZE_SIZE + j] = {
+                        "x1": i,
+                        "y1": j,
+                        "x2": i + 1,
+                        "y2": j,
+                        "w": Math.floor(WEIGHT_RANGE_LEFT + Math.random() * WEIGHT_RANGE_RIGHT),
+                    };
+                    maze_e[(i + 1) * MAZE_SIZE + j][i * MAZE_SIZE + j] = {
+                        "x1": i + 1,
+                        "y1": j,
+                        "x2": i,
+                        "y2": j,
+                        "w": Math.floor(WEIGHT_RANGE_LEFT + Math.random() * WEIGHT_RANGE_RIGHT),
+                    };
+                }
+            }
+        }
+    }
+
+    let maze_to_map = function(x) {
+        return x * 2 + 1;
+    }
+
+    let init_map = function() {
+        // -1 == wall
+        // >= 0 == road
+        for(let i = 0; i < map_size; i++) {
+            map[i] = [];
+            for (let j = 0; j < map_size; j++) {
+                if (i === 0 || i === map_size - 1 || j === 0 || j === map_size - 1) {
+                    map[i][j] = -1;
+                } else {
+                    let _i = i - 1;
+                    let _j = j - 1;
+                    if (_i % 2 === 0 && _j % 2 === 0) {
+                        map[i][j] = 0;
+                    } else {
+                        let maze_x1 = 0;
+                        let maze_y1 = 0;
+                        let maze_x2 = 0;
+                        let maze_y2 = 0;
+                        if (_i % 2 === 0 && _j % 2 !== 0) {
+                            maze_x1 = Math.floor(_i / 2);
+                            maze_y1 = Math.floor((_j - 1) / 2);
+                            maze_x2 = Math.floor(_i / 2);
+                            maze_y2 = Math.floor((_j + 1) / 2);
+                        } else if (_i % 2 !== 0 && _j % 2 === 0) {
+                            maze_x1 = Math.floor((_i - 1) / 2);
+                            maze_y1 = Math.floor(_j / 2);
+                            maze_x2 = Math.floor((_i + 1) / 2);
+                            maze_y2 = Math.floor(_j / 2);
+                        } else {
+                            maze_x1 = Math.floor(_i / 2);
+                            maze_y1 = Math.floor(_j / 2);
+                            maze_x2 = Math.floor((_i + 1) / 2);
+                            maze_y2 = Math.floor((_j + 1) / 2);
+                        }
+                        // if (maze_e[maze_x1 * MAZE_SIZE + maze_y1][maze_x2 * MAZE_SIZE + maze_y2] != null) {
+                        //     map[i][j] = maze_e[maze_x1 * MAZE_SIZE + maze_y1][maze_x2 * MAZE_SIZE + maze_y2].w;
+                        // } else if (maze_e[maze_x2 * MAZE_SIZE + maze_y2][maze_x1 * MAZE_SIZE + maze_y1] != null) {
+                        //     map[i][j] = maze_e[maze_x2 * MAZE_SIZE + maze_y2][maze_x1 * MAZE_SIZE + maze_y1].w;
+                        // } else {
+                        //     map[i][j] = -1;
+                        // }
+                        if (maze_e_prim[maze_x1 * MAZE_SIZE + maze_y1][maze_x2 * MAZE_SIZE + maze_y2] != null) {
+                            map[i][j] = maze_e_prim[maze_x1 * MAZE_SIZE + maze_y1][maze_x2 * MAZE_SIZE + maze_y2].w;
+                        } else if (maze_e_prim[maze_x2 * MAZE_SIZE + maze_y2][maze_x1 * MAZE_SIZE + maze_y1] != null) {
+                            map[i][j] = maze_e_prim[maze_x2 * MAZE_SIZE + maze_y2][maze_x1 * MAZE_SIZE + maze_y1].w;
+                        } else {
+                            map[i][j] = -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let block_manual = $("<span />", {
+        css: {
+            "position": "absolute",
+            "width": PIXEL_SIZE * 0.8 + "px",
+            "height": PIXEL_SIZE * 0.8 + "px",
+            "top": 0,
+            "left": 0,
+            "background-color": "#525252",
+        }
+    });
+    let block_manual_pos = {
+        x: 0,
+        y: 0,
+        animating: false,
+    }
+
+    let secret_word = {
+        input: "",
+        cheat_mode: false,
+    };
+    $(document).on("keydown", function(event){
+        let new_pos = {
+            x: block_manual_pos.x,
+            y: block_manual_pos.y,
+            animating: true,
+        };
+        switch(event.which) {
+            case 37: // left
+                new_pos.y -= 1;
+                event.preventDefault();
+                break;
+
+            case 38: // up
+                new_pos.x -= 1;
+                event.preventDefault();
+                break;
+
+            case 39: // right
+                new_pos.y += 1;
+                event.preventDefault();
+                break;
+
+            case 40: // down
+                new_pos.x += 1;
+                event.preventDefault();
+                break;
+
+            default:
+                secret_word.input += event.key;
+                while(secret_word.input.length > 32) {
+                    secret_word.input.substr(1);
+                }
+                break;
+        }
+        if(block_manual_pos.animating === false) {
+            if(maze_e_prim[block_manual_pos.x * MAZE_SIZE + block_manual_pos.y] != null
+                && maze_e_prim[block_manual_pos.x * MAZE_SIZE + block_manual_pos.y]
+                    [new_pos.x * MAZE_SIZE + new_pos.y] != null
+                || maze_e_prim[new_pos.x * MAZE_SIZE + new_pos.y] != null
+                && maze_e_prim[new_pos.x * MAZE_SIZE + new_pos.y]
+                    [block_manual_pos.x * MAZE_SIZE + block_manual_pos.y] != null) {
+                block_manual_pos = new_pos;
+                block_manual.animate({
+                    top: PIXEL_SIZE * (maze_to_map(block_manual_pos.x) + 0.1) + "px",
+                    left: PIXEL_SIZE * (maze_to_map(block_manual_pos.y) + 0.1) + "px",
+                }, 50, function(){
+                    block_manual_pos.animating = false;
+                });
+            }
+        }
+        if(secret_word.cheat_mode === false && secret_word.input.includes("maze")) {
+            secret_word.cheat_mode = true;
+            for(let i of maze_solution) {
+                let v = maze_v[i];
+                let pixel = $("<span />", {
+                    class: "pixel",
+                    css: {
+                        "position": "absolute",
+                        "width": PIXEL_SIZE * 0.4 + "px",
+                        "height": PIXEL_SIZE * 0.4 + "px",
+                        "top": PIXEL_SIZE * (maze_to_map(v.x) + 0.3) + "px",
+                        "left": PIXEL_SIZE * (maze_to_map(v.y) + 0.3) + "px",
+                        "background-color": "#292929",
+                    },
+                    click: function() {},
+                })
+                maze.append(pixel);
+            }
+        }
+    });
+    let block_auto = $("<span />", {
+        css: {
+            "position": "absolute",
+            "width": PIXEL_SIZE * 0.8 + "px",
+            "height": PIXEL_SIZE * 0.8 + "px",
+            "top": 0,
+            "left": 0,
+            "background-color": "#292929",
+        }
+    });
+    let block_auto_pos = {
+        x: 0,
+        y: 0,
+        animating: false,
+        path_index: 0,
+    }
+
+    let render_map = function() {
+        maze.empty();
+        for(let i=0; i<map_size; i++) {
+            for (let j = 0; j < map_size; j++) {
+                if (map[i][j] === -1) {
+                    let pixel = $("<span />", {
+                        class: "pixel",
+                        css: {
+                            "position": "absolute",
+                            "width": PIXEL_SIZE + "px",
+                            "height": PIXEL_SIZE + "px",
+                            "top": PIXEL_SIZE * i + "px",
+                            "left": PIXEL_SIZE * j + "px",
+                            "background-color": "#161616",
+                        },
+                        click: function () {
+                        },
+                    })
+                    maze.append(pixel);
+                }
+                if (map[i][j] >= 0) {
+                    let hue = 30 + map[i][j] / (WEIGHT_RANGE_RIGHT - WEIGHT_RANGE_LEFT) * 330;
+                    let lightness = 1 + map[i][j] / (WEIGHT_RANGE_RIGHT - WEIGHT_RANGE_LEFT) * 5;
+                    let pixel = $("<span />", {
+                        class: "pixel",
+                        css: {
+                            "position": "absolute",
+                            "width": PIXEL_SIZE + "px",
+                            "height": PIXEL_SIZE + "px",
+                            "top": PIXEL_SIZE * i + "px",
+                            "left": PIXEL_SIZE * j + "px",
+                            "background-color": "hsl(" + hue + ", 100%, " + lightness + "%)",
+                        },
+                        click: function () {
+                        },
+                    })
+                    maze.append(pixel);
+                }
+            }
+        }
+
+        block_manual.css("top", PIXEL_SIZE * (maze_to_map(block_manual_pos.x) + 0.1) + "px");
+        block_manual.css("left", PIXEL_SIZE * (maze_to_map(block_manual_pos.y) + 0.1) + "px");
+        maze.append(block_manual);
+
+        block_auto.css("top", PIXEL_SIZE * (maze_to_map(block_auto_pos.x) + 0.1) + "px");
+        block_auto.css("left", PIXEL_SIZE * (maze_to_map(block_auto_pos.y) + 0.1) + "px");
+        maze.append(block_auto);
+        let block_auto_timer = setInterval(
+            () => block_auto_runner(block_auto, block_auto_pos, maze_solution),
+            TURN_DURATION);
+    }
+
+    let block_auto_runner = function(block, pos, solution) {
+        let v = maze_v[solution[pos.path_index]];
+        pos.x = v.x;
+        pos.y = v.y;
+        pos.animating = true;
+        let animating_time = 0;
+        if(pos.path_index > 0) {
+            let v0 = maze_v[solution[pos.path_index - 1]];
+            let w = maze_e_prim[v0.x * MAZE_SIZE + v0.y][v.x * MAZE_SIZE + v.y].w;
+            animating_time = 100 + w / (WEIGHT_RANGE_RIGHT - WEIGHT_RANGE_LEFT) * (TURN_DURATION - 100);
+        }
+        block_auto.animate({
+            top: PIXEL_SIZE * (maze_to_map(pos.x) + 0.1) + "px",
+            left: PIXEL_SIZE * (maze_to_map(pos.y) + 0.1) + "px",
+        }, animating_time, function(){
+            pos.animating = false;
+            if(pos.path_index < solution.length - 1) {
+                pos.path_index += 1;
+            }
+        });
+    }
+</script>
+
+<script id="worker_prim" type="javascript">
+    let MAZE_SIZE = 0;
+    let maze_v = [];
+    let maze_e = [];
+    let maze_e_prim = [];
+
+    onmessage = function(event) {
+        MAZE_SIZE = event.data.maze_size;
+        maze_v = event.data.maze_v;
+        maze_e = event.data.maze_e;
+
+        for(let i=0; i<MAZE_SIZE * MAZE_SIZE; i++) {
+            maze_e_prim[i] = [];
+            for(let j=0; j<MAZE_SIZE * MAZE_SIZE; j++) {
+                maze_e_prim[i][j] = null;
+            }
+        }
+        prim();
+
+        postMessage({
+            type: "result",
+            maze_e_prim: maze_e_prim,
+        });
+        close();
+    }
+
+    let prim = function() {
+        let start_id = 0;
+        let S = [];
+        let V = [];
+        for(let i = 0; i<MAZE_SIZE * MAZE_SIZE; i++) {
+            V.push(i)
+        }
+        S.push(start_id);
+        remove(V, start_id);
+        let count = 1;
+        while(true) {
+            let edge_list = [];
+            for (let s of S) {
+                for (let e of maze_e[s]) {
+                    if (e != null && !S.includes(e.x2 * MAZE_SIZE + e.y2)) {
+                        edge_list.push(e);
+                    }
+                }
+            }
+            let min_w = -1;
+            let min_e = null;
+            for (let e of edge_list) {
+                if (min_w === -1 || e.w < min_w) {
+                    min_w = e.w;
+                    min_e = e;
+                }
+            }
+            if (min_e != null) {
+                S.push(min_e.x2 * MAZE_SIZE + min_e.y2);
+                remove(V, min_e.x2 * MAZE_SIZE + min_e.y2);
+                maze_e_prim[min_e.x1 * MAZE_SIZE + min_e.y1][min_e.x2 * MAZE_SIZE + min_e.y2] = min_e;
+                count += 1;
+                postMessage({
+                    type: "progress",
+                    progress: count,
+                })
+            } else {
+                break;
+            }
+        }
+    }
+
+    let remove = function(arr, ele) {
+        let index = arr.indexOf(ele);
+        while(index !== -1) {
+            arr.splice(index, 1);
+            index = arr.indexOf(ele);
+        }
+    }
+</script>
+
+<script id="worker_dijkstra" type="javascript">
+    let MAZE_SIZE = 0;
+    let maze_v = [];
+    let maze_e_prim = [];
+    let count = 0;
+
+    let from_id = 0;
+    let to_id = 0;
+
+    onmessage = function(event) {
+        MAZE_SIZE = event.data.maze_size;
+        maze_v = event.data.maze_v;
+        maze_e_prim = event.data.maze_e_prim;
+
+        from_id = 0;
+        to_id = MAZE_SIZE * MAZE_SIZE - 1;
+        let maze_solution = dijkstra();
+
+        postMessage({
+            type: "result",
+            solution: maze_solution,
+        });
+        close();
+    }
+
+    let dijkstra = function() {
+        let U = [];
+        let V = [];
+        let d = {};
+        let max_distance = 0;
+        for(let i = 0; i<MAZE_SIZE*MAZE_SIZE; i++) {
+            V.push(i)
+        }
+        U.push(from_id);
+        remove(V, from_id);
+        d[from_id] = {
+            id: from_id,
+            path: [from_id],
+            cost: 0,
+        }
+
+        while(U.indexOf(to_id) === -1) {
+            let u_list = [];
+            for(let u of U) {
+                for(let v of V) {
+                    if(maze_e_prim[u][v] != null) {
+                        u_list.push({
+                            id: v,
+                            path: d[u].path.concat([v]),
+                            cost: d[u].cost + maze_e_prim[u][v].w,
+                        });
+                    }
+                }
+            }
+            let min_cost = -1;
+            let min_u = null;
+            for (let u of u_list) {
+                if (min_cost === -1 || u.cost < min_cost) {
+                    min_cost = u.cost;
+                    min_u = u;
+                }
+            }
+            if(min_u != null) {
+                U.push(min_u.id);
+                remove(V, min_u.id);
+                d[min_u.id] = min_u;
+                let distance =  maze_v[min_u.id].x + maze_v[min_u.id].y;
+                if(distance > max_distance) {
+                    max_distance = distance;
+                }
+                postMessage({
+                    type: "progress",
+                    progress: max_distance,
+                });
+            }
+            else {
+                break;
+            }
+        }
+        return d[to_id];
+    }
+
+    let remove = function(arr, ele) {
+        let index = arr.indexOf(ele);
+        while(index !== -1) {
+            arr.splice(index, 1);
+            index = arr.indexOf(ele);
+        }
+    }
+</script>
+
+<script id="worker_dfs" type="javascript">
+    let MAZE_SIZE = 0;
+    let maze_v = [];
+    let maze_e_prim = [];
+    let count = 0;
+
+    let from_id = 0;
+    let to_id = 0;
+    let d = {}
+
+    onmessage = function(event) {
+        MAZE_SIZE = event.data.maze_size;
+        maze_v = event.data.maze_v;
+        maze_e_prim = event.data.maze_e_prim;
+
+        from_id = 0;
+        to_id = MAZE_SIZE * MAZE_SIZE - 1;
+        d[from_id] = {
+            id: from_id,
+            path: [from_id],
+            cost: 0,
+        }
+
+        dfs([from_id]);
+        postMessage({
+            type: "result",
+            solution: d[to_id],
+        });
+        close();
+    }
+
+    let dfs = function(path) {
+        let p = path[path.length - 1];
+        if(p === to_id) {
+            return path;
+        }
+        let c_list = [];
+        for(let e in maze_e_prim[p]) {
+            let _e = maze_e_prim[p][e];
+            if(_e != null && !path.includes(_e.x2 * MAZE_SIZE + _e.y2)) {
+                c_list.push(_e.x2 * MAZE_SIZE + _e.y2)
+            }
+        }
+        for(let c of c_list) {
+            d[c] = {
+                id: c,
+                path: d[p].path.concat([c]),
+                cost: d[p].cost + maze_e_prim[p][c].w,
+            }
+            let res = dfs(path.concat([c]));
+            if(res != null) {
+                return res;
+            }
+        }
+    }
+</script>
+
+<script id="worker_bfs" type="javascript">
+    let MAZE_SIZE = 0;
+    let maze_v = [];
+    let maze_e_prim = [];
+    let count = 0;
+
+    let from_id = 0;
+    let to_id = 0;
+
+    onmessage = function(event) {
+        MAZE_SIZE = event.data.maze_size;
+        maze_v = event.data.maze_v;
+        maze_e_prim = event.data.maze_e_prim;
+
+        from_id = 0;
+        to_id = MAZE_SIZE * MAZE_SIZE - 1;
+
+        let maze_solution = bfs();
+        postMessage({
+            type: "result",
+            solution: maze_solution,
+        });
+        close();
+    }
+
+    let bfs = function() {
+        let U = [];
+        let V = [];
+        let d = {};
+        for(let i = 0; i<MAZE_SIZE*MAZE_SIZE; i++) {
+            V.push(i)
+        }
+        U.push(from_id);
+        remove(V, from_id);
+        d[from_id] = {
+            id: from_id,
+            path: [from_id],
+            cost: 0,
+        }
+
+        while(U.indexOf(to_id) === -1) {
+            let u_list = [];
+            for(let u of U) {
+                for(let v of V) {
+                    if(maze_e_prim[u][v] != null) {
+                        u_list.push({
+                            id: v,
+                            path: d[u].path.concat([v]),
+                            cost: d[u].cost + maze_e_prim[u][v].w,
+                        });
+                    }
+                }
+            }
+            if(u_list[0] != null) {
+                U.push(u_list[0].id);
+                remove(V, u_list[0].id);
+                d[u_list[0].id] = u_list[0];
+                postMessage({
+                    type: "progress",
+                    progress: 0,
+                });
+            }
+            else {
+                break;
+            }
+        }
+        return d[to_id];
+    }
+
+    let remove = function(arr, ele) {
+        let index = arr.indexOf(ele);
+        while(index !== -1) {
+            arr.splice(index, 1);
+            index = arr.indexOf(ele);
+        }
+    }
+</script>
