@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QR Code Generator</title>
+</head>
+<body>
+    <h1>QR Code Generator</h1>
+    <table>
+        <tbody>
+            <tr>
+                <td colspan="4">
+                    <textarea id="input_text" class="text_box">Hello World!</textarea>
+                </td>
+            </tr>
+            <tr>
+                <td>Version:</td>
+                <td>
+                    <select id="version" class="select_box">
+                        <option value="-1" selected>auto</option>
+                    </select>
+                </td>
+                <td>Correct Level:</td>
+                <td>
+                    <select id="correct_level" class="select_box">
+                        <option value="L">L (7%)</option>
+                        <option value="M">M (15%)</option>
+                        <option value="Q">Q (25%)</option>
+                        <option value="H" selected>H (30%)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Width:</td>
+                <td>
+                    <input id="width" class="input_box" type="number" value="256">
+                </td>
+                <td>Height:</td>
+                <td>
+                    <input id="height" class="input_box" type="number" value="256">
+                </td>
+            </tr>
+            <tr>
+                <td>Foreground:</td>
+                <td><input id="foreground" class="color_box" type="color" value="#000000"></td>
+                <td>Background:</td>
+                <td><input id="background" class="color_box" type="color" value="#ffffff"></td>
+            </tr>
+        </tbody>
+    </table>
+    <br>
+    <div id="qrcode"></div>
+</body>
+</html>
+
+<style>
+    :root {
+        background-color: #777777;
+    }
+    /* table, th, td {
+        border: 1px solid black;
+    } */
+    .text_box {
+        width: calc(100% - 6px);
+        height: 150px;
+        background: #aaaaaa;
+    }
+    .select_box {
+        width: 100px;
+        height: 20px;
+        border-color: #000000;
+        background-color: #aaaaaa;
+    }
+    .input_box {
+        width: 92px;
+        height: 14px;
+        border-color: #000000;
+        background-color: #aaaaaa;
+    }
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+        margin: 0;
+    }
+    /* Firefox */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+    .color_box {
+        width: 100px;
+        height: 20px;
+        border-color: #000000;
+        background-color: #aaaaaa;
+    }
+</style>
+
+<script type="text/javascript" src="jquery-3.5.1.min.js"></script>
+<script type="text/javascript" src="jquery-qrcode/qrcode.js"></script>
+<script type="text/javascript" src="jquery-qrcode/jquery.qrcode.js"></script>
+<script>
+(function() {
+    function update_qrcode() {
+        $("#qrcode").empty().qrcode({
+            "text": $("#input_text").val(),
+            "typeNumber": $("#version").val(),
+            "correctLevel": {
+                "L": QRErrorCorrectLevel.H,
+                "M": QRErrorCorrectLevel.M,
+                "Q": QRErrorCorrectLevel.Q,
+                "H": QRErrorCorrectLevel.H,
+            }[$("#correct_level").val()],
+            "width": parseInt($("#width").val()),
+            "height": parseInt($("#height").val()),
+            "foreground": $("#foreground").val(),
+            "background": $("#background").val(),
+        });
+    }
+    $(document).ready(function () {
+        for(let i = 1; i <= 40; i ++) {
+            $("#version").append(`<option value="${i}">${i}</option>`);
+        }
+
+        $("#input_text").on("change", function(event) {
+            update_qrcode();
+        }).trigger("change");
+        $("#version").on("change", function(event) {
+            update_qrcode();
+        });
+        $("#correct_level").on("change", function(event) {
+            update_qrcode();
+        });
+        $("#width")
+            .on("change", function(event) {
+                update_qrcode();
+            })
+            .on("mousewheel", function(event) {})
+        ;
+        $("#height")
+            .on("change", function(event) {
+                update_qrcode();
+            })
+            .on("mousewheel", function(event) {})
+        ;
+        $("#foreground").on("change", function(event) {
+            update_qrcode();
+        })
+        $("#background").on("change", function(event) {
+            update_qrcode();
+        })
+    })
+})();
+</script>

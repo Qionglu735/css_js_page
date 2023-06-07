@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mouse</title>
+</head>
+<body>
+<div class="ground">
+    <span class="mouse" id="mouse-a"></span>
+    <span class="mouse" id="mouse-b"></span>
+    <span class="mouse" id="mouse-c"></span>
+</div>
+</body>
+</html>
+
+<style>
+    :root {
+        background-color: #000000;
+    }
+    .ground {
+        width: 300px;
+    }
+    .mouse {
+        display: block;
+        background-color: #777777;
+        width: 50px;
+        height: 50px;
+        margin-bottom: 5px;
+    }
+</style>
+
+<script src="jquery-3.5.1.min.js"></script>
+<script>
+let set_left = function(item) {
+    item.css("margin-left", "");
+    item.css("margin-right", "");
+}
+let set_middle = function(item) {
+    item.css("margin-left", "auto");
+    item.css("margin-right", "auto");
+}
+let set_right = function(item) {
+    item.css("margin-left", "auto");
+    item.css("margin-right", "");
+}
+$(document).ready(function() {
+    let span_list = [$("#mouse-a"), $("#mouse-b"), $("#mouse-c")];
+    let span_status = {};
+    for(let i of span_list) {
+        let seed = Math.floor(Math.random() * 3);
+        span_status[i.attr("id")] = seed;
+        if(seed === 0) {
+            set_left(i)
+        }
+        else if(seed === 1) {
+            set_middle(i)
+        }
+        else if(seed === 2) {
+            set_right(i)
+        }
+    }
+
+    $(".mouse").on("mouseenter", function(event) {
+        let seed = -1;
+        do {
+            seed = Math.floor(Math.random() * 3);
+        }
+        while(seed === span_status[$(this).attr("id")])
+        span_status[$(this).attr("id")] = seed;
+        if(seed === 0) {
+            set_left($(this))
+        }
+        else if(seed === 1) {
+            set_middle($(this))
+        }
+        else if(seed === 2) {
+            set_right($(this))
+        }
+    })
+});
+</script>
