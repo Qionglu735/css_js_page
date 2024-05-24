@@ -6,33 +6,38 @@
     <link href="jquery-ui-1.12.1/jquery-ui.css" rel="stylesheet">
 </head>
 <body style="background-color: #000000">
-    <canvas id="my-canvas" width="1000" height="200"></canvas>
+    <canvas id="my-canvas" width="1000" height="500"></canvas>
     <div style="color: #666666">
-        M: <span id="m_val"></span>
+        M (Mess): <span id="m_val"></span> kg
         <div class="param_slider" id="m_slider"></div>
     </div>
     <div style="color: #666666">
-        V: <span id="v_val"></span>
+        V (Velocigy): <span id="v_val"></span> m/s
         <div class="param_slider" id="v_slider"></div>
     </div>
     <div style="color: #666666">
-        A: <span id="a_val"></span>
+        Kinetic Energy: <span id="e_val"></span> J
+    </div>
+    <div style="color: #666666">
+        A (Angel): <span id="a_val"></span> degree
         <div class="param_slider" id="a_slider"></div>
     </div>
     <div style="color: #666666">
-        P: <span id="p_val"></span>
+        P (Air Drag): <span id="p_val"></span> kg/s
         <div class="param_slider" id="p_slider"></div>
     </div>
     <div style="color: #666666">
-        G: <span id="g_val"></span>
+        G (Gravity): <span id="g_val"></span> m/s^2
         <div class="param_slider" id="g_slider"></div>
     </div>
     <div style="color: #666666">
-        Z: <span id="z_val"></span>
+        Z (Zoom): <span id="z_val"></span>
         <div class="param_slider" id="z_slider"></div>
     </div>
 </body>
 </html>
+
+<!-- https://en.wikipedia.org/wiki/Projectile_motion#Trajectory_of_a_projectile_with_air_resistance -->
 
 <style>
 .centered {
@@ -62,18 +67,20 @@
 <script src="jquery-ui-1.12.1/jquery-ui.js"></script>
 <script>
 (function() {
-    let m = 1.0;
-    let p = 1.0;
+    let m = 0.05;
+    let p = 0.25;
     let g = 9.8;
 
-    let v = 30.0;
+    let v = 10.0;
     let a = 30;
+    let e = 0.5 * m * v * v;
 
-    let zoom = 20;
+    let zoom = 300;
     let range_x = 1000;
-    let range_y = 200;
-    var canvas = document.querySelector('#my-canvas');
-    var context = canvas.getContext('2d');
+    let range_y = 500;
+    
+    let canvas = $("#my-canvas")[0];
+    let context = canvas.getContext("2d");
 
     function cal() {
         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -82,7 +89,7 @@
         let u = p / m;
         while(t < 10) {
             let vx = v * Math.cos(_a) / u * (1 - Math.pow(Math.E, -1 * u * t));
-            let vy = -1 * g / u + (v * Math.sin(_a) + g / u) * Math.pow(Math.E, -1 * u * t)
+            let vy = -1 * g / u + (v * Math.sin(_a) + g / u) * Math.pow(Math.E, -1 * u * t);
 
             let sx = v * Math.cos(_a) / u * (1 - Math.pow(Math.E, -1 * u * t));
             let sy = -1 * g / u * t + 1 / u * (v * Math.sin(_a) + g / u) * ( 1 - Math.pow(Math.E, -1 * u * t));
@@ -95,7 +102,23 @@
             }
             t += 0.01;
             // console.log("vx:", vx, "vy:", vy, "sx:", sx, "sy", sy);
-            drawPoint(context, sx * zoom, 200 - sy * zoom, null, '#006600', 1);
+            drawPoint(context, sx * zoom, range_y - sy * zoom, null, '#006600', 1);
+        }
+        t = 0;
+        while(t < 100) {
+            drawPoint(context, t * 0.1 * zoom, range_y, null, "#aa0000", 2);
+            drawPoint(context, 0, range_y - t * 0.1 * zoom, null, "#aa0000", 2);
+            if (t % 10 === 0) {
+                drawPoint(context, t * 0.1 * zoom, range_y - 1, null, "#aa0000", 2);
+                drawPoint(context, t * 0.1 * zoom, range_y - 2, null, "#aa0000", 2);
+                drawPoint(context, t * 0.1 * zoom, range_y - 3, null, "#aa0000", 2);
+                drawPoint(context, t * 0.1 * zoom, range_y - 4, null, "#aa0000", 2);
+                drawPoint(context, 1, range_y - t * 0.1 * zoom, null, "#aa0000", 2);
+                drawPoint(context, 2, range_y - t * 0.1 * zoom, null, "#aa0000", 2);
+                drawPoint(context, 3, range_y - t * 0.1 * zoom, null, "#aa0000", 2);
+                drawPoint(context, 4, range_y - t * 0.1 * zoom, null, "#aa0000", 2);
+            }
+            t += 1;
         }
     }
 
@@ -135,24 +158,28 @@
             slide: function(event, ui) {
                 // console.log(this.id, $(this).slider("option", "value"))
                 if(this.id === "m_slider") {
-                    m = $(this).slider("option", "value") / 10.0;
-                    $("#m_val").html(m);
+                    m = $(this).slider("option", "value") / 10000.0;
+                    $("#m_val").html(Math.floor(m * 1000) / 1000);
+                    e = 0.5 * m * v * v;
+                    $("#e_val").html(Math.floor(e * 100) / 100);
                 }
                 else if(this.id === "v_slider") {
-                    v = $(this).slider("option", "value") / 10.0;
+                    v = $(this).slider("option", "value") / 20.0;
                     $("#v_val").html(v);
-                }
-                else if(this.id === "p_slider") {
-                    p = $(this).slider("option", "value") / 10.0;
-                    $("#p_val").html(p);
-                }
-                else if(this.id === "g_slider") {
-                    g = $(this).slider("option", "value") / 10.0;
-                    $("#g_val").html(g);
+                    e = 0.5 * m * v * v;
+                    $("#e_val").html(Math.floor(e * 100) / 100);
                 }
                 else if(this.id === "a_slider") {
-                    a = $(this).slider("option", "value");
-                    $("#a_val").html(a);
+                    a = $(this).slider("option", "value") * 0.15;
+                    $("#a_val").html(Math.floor(a * 100) / 100);
+                }
+                else if(this.id === "p_slider") {
+                    p = $(this).slider("option", "value") / 600.0;
+                    $("#p_val").html(Math.floor(p * 100) / 100);
+                }
+                else if(this.id === "g_slider") {
+                    g = $(this).slider("option", "value") / 20.0;
+                    $("#g_val").html(g);
                 }
                 else if(this.id === "z_slider") {
                     zoom = $(this).slider("option", "value");
@@ -163,30 +190,31 @@
         })
         $(".param_slider").each(function() {
             if(this.id === "m_slider") {
-                $("#m_val").html(m);
-                $(this).slider("option", "value", m * 10);
+                $("#m_val").html(Math.floor(m * 1000) / 1000);
+                $(this).slider("option", "value", m * 10000);
             }
             else if(this.id === "v_slider") {
-                $("#v_val").html(v);
-                $(this).slider("option", "value", v * 10);
-            }
-            else if(this.id === "p_slider") {
-                $("#p_val").html(p);
-                $(this).slider("option", "value", p * 10);
-            }
-            else if(this.id === "g_slider") {
-                $("#g_val").html(g);
-                $(this).slider("option", "value", g * 10);
+                $("#v_val").html(Math.floor(v * 100) / 100);
+                $(this).slider("option", "value", v * 20);
             }
             else if(this.id === "a_slider") {
-                $("#a_val").html(a);
-                $(this).slider("option", "value", a);
+                $("#a_val").html(Math.floor(a * 100) / 100);
+                $(this).slider("option", "value", a / 0.15);
+            }
+            else if(this.id === "p_slider") {
+                $("#p_val").html(Math.floor(p * 100) / 100);
+                $(this).slider("option", "value", p * 600);
+            }
+            else if(this.id === "g_slider") {
+                $("#g_val").html(Math.floor(g * 100) / 100);
+                $(this).slider("option", "value", g * 20);
             }
             else if(this.id === "z_slider") {
                 $("#z_val").html(zoom);
                 $(this).slider("option", "value", zoom);
             }
         });
+        $("#e_val").html(Math.floor(e));
 
         cal();
     });
