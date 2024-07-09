@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Generator</title>
 </head>
-<body>
-    <h1>QR Code Generator</h1>
-    <table>
+<body style="text-align: center">
+    <h1 class="horizontal_center">QR Code Generator</h1>
+    <table class="horizontal_center" style="text-align: left">
         <tbody>
             <tr>
                 <td colspan="4">
@@ -35,11 +35,11 @@
             <tr>
                 <td>Width:</td>
                 <td>
-                    <input id="width" class="input_box" type="number" value="256">
+                    <input id="width" class="input_box" type="number" value="256" min="1">
                 </td>
                 <td>Height:</td>
                 <td>
-                    <input id="height" class="input_box" type="number" value="256">
+                    <input id="height" class="input_box" type="number" value="256" min="1">
                 </td>
             </tr>
             <tr>
@@ -48,10 +48,45 @@
                 <td>Background:</td>
                 <td><input id="background" class="color_box" type="color" value="#ffffff"></td>
             </tr>
+            <tr>
+                <td colspan="4">
+                    <button id="random" class="random_button">Random Text</button>
+                </td>
+            </tr>
+            <tr>
+                <td><label for="length">Length:</label></td>
+                <td><input id="length" class="input_box" type="number" value="64" min="1"></td>
+                <td><label for="count">Count:</label></td>
+                <td><input id="count" class="input_box" type="number" value="4" min="1"></td>
+            </tr>
+            <tr>
+                <td><label for="uppercase">Uppercase:</label></td>
+                <td><input id="uppercase" class="char_choice" type="checkbox" checked></td>
+                <td><label for="lowercase">Lowercase:</label></td>
+                <td><input id="lowercase" class="char_choice" type="checkbox" checked></td>
+            </tr>
+            <tr>
+                <td><label for="punctuation">Punctuation:</label></td>
+                <td><input id="punctuation" class="char_choice" type="checkbox"></td>
+                <td><label for="whitespace">Whitespace:</label></td>
+                <td><input id="whitespace" class="char_choice" type="checkbox"></td>
+            </tr>
+            <tr>
+                <td><label for="digits">Digits:</label></td>
+                <td><input id="digits" class="char_choice" type="checkbox" checked></td>
+                <td><Label for="octdigits">Octdigits:</Label></td>
+                <td><input id="octdigits" class="char_choice" type="checkbox"></td>
+            </tr>
+            <tr>
+                <td><label for="hexdigits">Hexdigits:</label></td>
+                <td><input id="hexdigits" class="char_choice" type="checkbox"></td>
+                <td><label for="base32">Base32:</label></td>
+                <td><input id="base32" class="char_choice" type="checkbox"></td>
+            </tr>
         </tbody>
     </table>
     <br>
-    <div id="qrcode"></div>
+    <div id="qrcode" class="horizontal_center"></div>
 </body>
 </html>
 
@@ -62,22 +97,31 @@
     /* table, th, td {
         border: 1px solid black;
     } */
+    .horizontal_center {
+        position: relative;
+        left: 50%; transform:
+        translate(-50%, 0);
+    }
     .text_box {
         width: calc(100% - 6px);
         height: 150px;
         background: #aaaaaa;
+        white-space: pre;
+        overflow-wrap: normal;
+        overflow-x: auto;
+    }
+    select, input {
+        background-color: #aaaaaa;
     }
     .select_box {
         width: 72px;
         height: 20px;
         border-color: #000000;
-        background-color: #aaaaaa;
     }
     .input_box {
         width: 64px;
         height: 14px;
         border-color: #000000;
-        background-color: #aaaaaa;
     }
     /* Chrome, Safari, Edge, Opera */
     input::-webkit-outer-spin-button,
@@ -93,6 +137,9 @@
         width: 72px;
         height: 20px;
         border-color: #000000;
+    }
+    .random_button {
+        width: 100%;
         background-color: #aaaaaa;
     }
 </style>
@@ -107,7 +154,7 @@
             "text": $("#input_text").val(),
             "typeNumber": $("#version").val(),
             "correctLevel": {
-                "L": QRErrorCorrectLevel.H,
+                "L": QRErrorCorrectLevel.L,
                 "M": QRErrorCorrectLevel.M,
                 "Q": QRErrorCorrectLevel.Q,
                 "H": QRErrorCorrectLevel.H,
@@ -123,33 +170,123 @@
             $("#version").append(`<option value="${i}">${i}</option>`);
         }
 
-        $("#input_text").on("change", function(event) {
-            update_qrcode();
-        }).trigger("change");
-        $("#version").on("change", function(event) {
-            update_qrcode();
-        });
-        $("#correct_level").on("change", function(event) {
-            update_qrcode();
-        });
-        $("#width")
+        $("#input_text")
+            .on("keyup", function(event) {
+                $(this).prop("spellcheck", true)
+            })
             .on("change", function(event) {
                 update_qrcode();
             })
-            .on("mousewheel", function(event) {})
+            .trigger("change")
         ;
-        $("#height")
-            .on("change", function(event) {
+        $("select").on("change", function(event) {
+            update_qrcode();
+        });
+        $("input").on("change", function(event) {
+            update_qrcode();
+        });
+        $("input[type=number]")
+            .on("mousewheel", function(event) {
                 update_qrcode();
             })
-            .on("mousewheel", function(event) {})
         ;
-        $("#foreground").on("change", function(event) {
-            update_qrcode();
-        })
-        $("#background").on("change", function(event) {
-            update_qrcode();
-        })
-    })
+
+        $("#random").on("click", function(event) {
+            let char_list = "";
+            if($("#uppercase").prop("checked")) {
+                char_list += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            }
+            if($("#lowercase").prop("checked")) {
+                char_list += "abcdefghijklmnopqrstuvwxyz";
+            }
+            if($("#punctuation").prop("checked")) {
+                char_list += `!"#$%&'()*+,-./:;<=>?@[\]^_\`{|}~`;
+            }
+            if($("#whitespace").prop("checked")) {
+                char_list += " \t\n\r";
+            }
+            if($("#octdigits").prop("checked")) {
+                char_list += "01234567";
+            }
+            if($("#hexdigits").prop("checked")) {
+                char_list += "0123456789ABCDEF";
+            }
+            if($("#base32").prop("checked")) {
+                char_list += "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "234567";
+            }
+            char_list = char_list.split("");
+            let string_list = [];
+            for(let i of Array(parseInt($("#count").val())).keys()) {
+                string_list.push("")
+                for(let j of Array(parseInt($("#length").val())).keys()) {
+                    string_list[i] += char_list[Math.floor(Math.random() * char_list.length)];
+                }
+            }
+            $("#input_text").val(string_list.join("\n")).prop("spellcheck", false).trigger("change");
+        });
+
+        $("#uppercase").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $("#octdigits").prop("checked", false);
+                $("#hexdigits").prop("checked", false);
+            }
+            else {
+                $("#base32").prop("checked", false);
+            }
+        });
+
+        $("#lowercase").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $("#octdigits").prop("checked", false);
+                $("#hexdigits").prop("checked", false);
+                $("#base32").prop("checked", false);
+            }
+        });
+
+        $("#punctuation").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $("#octdigits").prop("checked", false);
+                $("#hexdigits").prop("checked", false);
+                $("#base32").prop("checked", false);
+            }
+        });
+
+        $("#whitespace").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $("#octdigits").prop("checked", false);
+                $("#hexdigits").prop("checked", false);
+                $("#base32").prop("checked", false);
+            }
+        });
+
+        $("#digits").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $("#octdigits").prop("checked", false);
+                $("#hexdigits").prop("checked", false);
+                $("#base32").prop("checked", false);
+            }
+        });
+
+        $("#octdigits").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $(".char_choice").prop("checked", false);
+                $(this).prop("checked", true);
+            }
+        });
+        $("#hexdigits").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $(".char_choice").prop("checked", false);
+                $(this).prop("checked", true);
+                $("#digits").prop("checked", true);
+            }
+        });
+        $("#base32").on("change", function(event) {
+            if($(this).prop("checked")) {
+                $(".char_choice").prop("checked", false);
+                $(this).prop("checked", true);
+                $("#uppercase").prop("checked", true);
+            }
+        });
+    });
 })();
 </script>
