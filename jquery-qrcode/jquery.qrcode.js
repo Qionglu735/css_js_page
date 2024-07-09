@@ -17,11 +17,14 @@
                         foreground      : "#000000"
 		}, options);
 
+		let actual_type_number = -1;
+
 		var createCanvas	= function(){
 			// create the qrcode itself
 			var qrcode	= new QRCode(options.typeNumber, options.correctLevel);
 			qrcode.addData(options.text);
 			qrcode.make();
+			actual_type_number = qrcode.typeNumber;
 
 			// create canvas element
 			var canvas	= document.createElement('canvas');
@@ -52,6 +55,7 @@
 			var qrcode	= new QRCode(options.typeNumber, options.correctLevel);
 			qrcode.addData(options.text);
 			qrcode.make();
+			actual_type_number = qrcode.typeNumber;
 			
 			// create table element
 			var $table	= $('<table></table>')
@@ -83,6 +87,7 @@
 
 		return this.each(function(){
 			var element	= options.render == "canvas" ? createCanvas() : createTable();
+			$(this).data("version", actual_type_number)
 			$(element).appendTo(this);
 		});
 	};

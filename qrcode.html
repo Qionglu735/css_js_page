@@ -19,7 +19,7 @@
                 <td>Version:</td>
                 <td>
                     <select id="version" class="select_box">
-                        <option value="-1" selected>auto</option>
+                        <option id="auto" value="-1" selected>auto</option>
                     </select>
                 </td>
                 <td>Correct Level:</td>
@@ -114,12 +114,12 @@
         background-color: #aaaaaa;
     }
     .select_box {
-        width: 72px;
+        width: 75px;
         height: 20px;
         border-color: #000000;
     }
     .input_box {
-        width: 64px;
+        width: calc(75px - 8px);
         height: 14px;
         border-color: #000000;
     }
@@ -134,7 +134,7 @@
         -moz-appearance: textfield;
     }
     .color_box {
-        width: 72px;
+        width: 75px;
         height: 20px;
         border-color: #000000;
     }
@@ -164,6 +164,13 @@
             "foreground": $("#foreground").val(),
             "background": $("#background").val(),
         });
+        let version = $("#qrcode").data("version");
+        if(version !== -1) {
+            $("#auto").html(`auto(${version})`);
+        }
+        else {
+            $("#auto").html(`auto`);
+        }
     }
     $(document).ready(function () {
         for(let i = 1; i <= 40; i ++) {
