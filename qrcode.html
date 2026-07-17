@@ -16,41 +16,8 @@
                 </td>
             </tr>
             <tr>
-                <td>Version:</td>
-                <td>
-                    <select id="version" class="select_box">
-                        <option id="auto" value="-1" selected>auto</option>
-                    </select>
-                </td>
-                <td>Correct Level:</td>
-                <td>
-                    <select id="correct_level" class="select_box">
-                        <option value="L">L (7%)</option>
-                        <option value="M">M (15%)</option>
-                        <option value="Q">Q (25%)</option>
-                        <option value="H" selected>H (30%)</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Width:</td>
-                <td>
-                    <input id="width" class="input_box" type="number" value="256" min="1">
-                </td>
-                <td>Height:</td>
-                <td>
-                    <input id="height" class="input_box" type="number" value="256" min="1">
-                </td>
-            </tr>
-            <tr>
-                <td>Foreground:</td>
-                <td><input id="foreground" class="color_box" type="color" value="#000000"></td>
-                <td>Background:</td>
-                <td><input id="background" class="color_box" type="color" value="#ffffff"></td>
-            </tr>
-            <tr>
                 <td colspan="4">
-                    <button id="random" class="random_button">Random Text</button>
+                    <button id="random" class="button">Random Text</button>
                 </td>
             </tr>
             <tr>
@@ -82,6 +49,61 @@
                 <td><input id="hexdigits" class="char_choice" type="checkbox"></td>
                 <td><label for="base32">Base32:</label></td>
                 <td><input id="base32" class="char_choice" type="checkbox"></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <button id="base64_encode" class="button">Base64 Encode</button>
+                </td>
+                <td colspan="2">
+                    <button id="base64_decode" class="button">Base64 Decode</button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button id="sha1" class="button">SHA-1</button>
+                </td>
+                <td>
+                    <button id="sha256" class="button">SHA-256</button>
+                </td>
+                <td>
+                    <button id="sha384" class="button">SHA-384</button>
+                </td>
+                <td>
+                    <button id="sha512" class="button">SHA-512</button>
+                </td>
+            </tr>
+            <tr>
+                <td>Version:</td>
+                <td>
+                    <select id="version" class="select_box">
+                        <option id="auto" value="-1" selected>auto</option>
+                    </select>
+                </td>
+                <td>Correct Level:</td>
+                <td>
+                    <select id="correct_level" class="select_box">
+                        <option value="L">L (7%)</option>
+                        <option value="M">M (15%)</option>
+                        <option value="Q">Q (25%)</option>
+                        <option value="H" selected>H (30%)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Width:</td>
+                <td>
+                    <input id="width" class="input_box" type="number" value="256" min="1">
+                </td>
+                <td>Height:</td>
+                <td>
+                    <input id="height" class="input_box" type="number" value="256" min="1">
+                </td>
+            </tr>
+            <tr>
+                <td>Foreground:</td>
+                <td><input id="foreground" class="color_box" type="color" value="#000000"></td>
+                <td>Background:</td>
+                <td><input id="background" class="color_box" type="color" value="#ffffff"></td>
             </tr>
         </tbody>
     </table>
@@ -139,7 +161,7 @@
         height: 20px;
         border-color: #000000;
     }
-    .random_button {
+    .button {
         width: 100%;
         background-color: #aaaaaa;
     }
@@ -152,7 +174,7 @@
 (function() {
     function update_qrcode() {
         $("#qrcode").empty().qrcode({
-            "text": $("#input_text").val(),
+            "text": $("#input_text").val().substring(0, 1273),
             "typeNumber": $("#version").val(),
             "correctLevel": {
                 "L": QRErrorCorrectLevel.L,
@@ -172,6 +194,16 @@
         else {
             $("#auto").html(`auto`);
         }
+    }
+    async function hash(str, alg) {
+        if (!crypto || !crypto.subtle) {
+            return "error";
+        }
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest(alg, data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     }
     $(document).ready(function () {
         for(let i = 1; i <= 40; i ++) {
@@ -216,23 +248,27 @@
             if($("#octdigits").prop("checked")) {
                 char_list += "01234567";
             }
+            if($("#digits").prop("checked")) {
+                char_list += "0123456789";
+            }
             if($("#hexdigits").prop("checked")) {
                 char_list += "0123456789ABCDEF";
             }
             if($("#base32").prop("checked")) {
                 char_list += "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "234567";
             }
-            char_list = char_list.split("");
+            char_list = [... new Set(char_list.split(""))];
             let string_list = [];
-            for(let i of Array(parseInt($("#count").val())).keys()) {
-                string_list.push("")
-                for(let j of Array(parseInt($("#length").val())).keys()) {
-                    string_list[i] += char_list[Math.floor(Math.random() * char_list.length)];
+            if (char_list.length > 0) {
+                for(let i of Array(parseInt($("#count").val())).keys()) {
+                    string_list.push("")
+                    for(let j of Array(parseInt($("#length").val())).keys()) {
+                        string_list[i] += char_list[Math.floor(Math.random() * char_list.length)];
+                    }
                 }
             }
             $("#input_text").val(string_list.join("\n")).prop("spellcheck", false).trigger("change");
         });
-
         $("#uppercase").on("change", function(event) {
             if($(this).prop("checked")) {
                 $("#octdigits").prop("checked", false);
@@ -242,7 +278,6 @@
                 $("#base32").prop("checked", false);
             }
         });
-
         $("#lowercase").on("change", function(event) {
             if($(this).prop("checked")) {
                 $("#octdigits").prop("checked", false);
@@ -250,7 +285,6 @@
                 $("#base32").prop("checked", false);
             }
         });
-
         $("#punctuation").on("change", function(event) {
             if($(this).prop("checked")) {
                 $("#octdigits").prop("checked", false);
@@ -258,7 +292,6 @@
                 $("#base32").prop("checked", false);
             }
         });
-
         $("#whitespace").on("change", function(event) {
             if($(this).prop("checked")) {
                 $("#octdigits").prop("checked", false);
@@ -266,7 +299,6 @@
                 $("#base32").prop("checked", false);
             }
         });
-
         $("#digits").on("change", function(event) {
             if($(this).prop("checked")) {
                 $("#octdigits").prop("checked", false);
@@ -274,7 +306,6 @@
                 $("#base32").prop("checked", false);
             }
         });
-
         $("#octdigits").on("change", function(event) {
             if($(this).prop("checked")) {
                 $(".char_choice").prop("checked", false);
@@ -295,6 +326,55 @@
                 $("#uppercase").prop("checked", true);
             }
         });
+
+        $("#base64_encode").on("click", function(event) {
+            $("#input_text").val(btoa(
+                new TextEncoder().encode($("#input_text").val()).reduce(
+                    (data, byte) => data + String.fromCharCode(byte),
+                    "",
+                )
+            ));
+            update_qrcode();
+        });
+        $("#base64_decode").on("click", function(event) {
+            try {
+                $("#input_text").val(new TextDecoder().decode(
+                    Uint8Array.from(atob(
+                        $("#input_text").val()),
+                        c => c.charCodeAt(0),
+                    )),
+                );
+                update_qrcode();
+            } catch (e) {
+                ;
+            }
+        });
+
+        $("#sha1").on("click", function(event) {
+            hash($("#input_text").val(), "SHA-1").then(r => {
+                $("#input_text").val(r);
+            });
+            update_qrcode();
+        });
+        $("#sha256").on("click", function(event) {
+            hash($("#input_text").val(), "SHA-256").then(r => {
+                $("#input_text").val(r);
+            });
+            update_qrcode();
+        });
+        $("#sha384").on("click", function(event) {
+            hash($("#input_text").val(), "SHA-384").then(r => {
+                $("#input_text").val(r);
+            });
+            update_qrcode();
+        });
+        $("#sha512").on("click", function(event) {
+            hash($("#input_text").val(), "SHA-512").then(r => {
+                $("#input_text").val(r);
+            });
+            update_qrcode();
+        });
+
     });
 })();
 </script>
